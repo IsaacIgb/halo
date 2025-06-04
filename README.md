@@ -1,2 +1,1 @@
-# halo
-Crime prevention WITH privacy protection for mass civilians | AI Layer into Surveillance Vertical
+Halo dynamically blurs the identity of civilians and identifies public safety concerns
