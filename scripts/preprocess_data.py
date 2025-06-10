@@ -67,7 +67,7 @@ for category, label in suspicious_categories.items():
 # Save labels CSV
 label_df = pd.DataFrame(label_data)
 label_df.to_csv(os.path.join(output_dir, 'train_labels.csv'), index=False)
-print("✅ Multi-class data preprocessing complete. Saved to processed_data/")python
+print("✅ Multi-class data preprocessing complete. Saved to processed_data/")
 import os
 import cv2
 import numpy as np
