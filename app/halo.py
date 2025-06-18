@@ -60,8 +60,6 @@ def process_video(input_path):
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     print(f"Processing {frame_count} frames...")
