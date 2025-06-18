@@ -1,6 +1,5 @@
 data/processed_data/
-
-
+app/input_videos/
 
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
