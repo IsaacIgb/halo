@@ -17,14 +17,27 @@ classifier_model = load_model("/Users/isaacigbokwe/Documents/halo/halo/models/ha
 SENSITIVE_CLASSES = {'person', 'cell phone', 'laptop', 'cat', 'dog'}
 DETECTION_INTERVAL = 10
 NO_BLUR_DURATION_SECONDS = 30
-SUSPICIOUS_THRESHOLD = 0.8
+SUSPICIOUS_THRESHOLD = 0.95
 VOTE_WINDOW = 3
 VOTE_REQUIREMENT = 2
 BLUR_OVERRIDE_KEY = "hal0hal0"
-blur_override = False
 
-# CNN input sequence
+# Global flags and buffers
+blur_override = False
 frame_sequence = deque(maxlen=5)
+message_timer = 0
+message_text = ""
+
+def get_decryption_password():
+    root = tk.Tk()
+    root.geometry("1x1+200+200")
+    root.lift()
+    root.attributes("-topmost", True)
+    root.after(100, lambda: root.focus_force())
+    password = simpledialog.askstring("Access Override", "Enter decryption key:", show='*', parent=root)
+    root.destroy()
+    time.sleep(0.2)
+    return password
 
 def is_suspicious_scene_sequence(model, frame_sequence, threshold=0.7):
     if len(frame_sequence) < 5:
@@ -43,7 +56,7 @@ def blur_region(image, bbox, pixel_size=9):
     if roi.size == 0:
         return image
     temp = cv2.resize(roi, (pixel_size, pixel_size), interpolation=cv2.INTER_LINEAR)
-    halo_tint = np.full_like(temp, (106, 211, 255))  # BGR tint
+    halo_tint = np.full_like(temp, (106, 211, 255))
     temp = cv2.addWeighted(temp, 0.7, halo_tint, 0.3, 0)
     pixelated = cv2.resize(temp, (x2 - x1, y2 - y1), interpolation=cv2.INTER_NEAREST)
     image[y1:y2, x1:x2] = pixelated
@@ -75,20 +88,20 @@ def should_blur(box, history, threshold=0.2, required_matches=3):
                 break
     return most_recent_match or match_count >= required_matches
 
-def draw_status_text(frame, text, color):
+def draw_text_box(frame, text, color, x=10, y=20, bg_color=(255, 255, 255)):
     font = cv2.FONT_HERSHEY_SIMPLEX
-    scale = 0.2
+    scale = 0.4
     thickness = 1
-    x, y = 10, 20
     (text_width, text_height), _ = cv2.getTextSize(text, font, scale, thickness)
-    cv2.rectangle(frame, (x - 5, y - text_height - 5), (x + text_width + 5, y + 5), (255, 255, 255), -1)
+    cv2.rectangle(frame, (x - 5, y - text_height - 5), (x + text_width + 5, y + 5), bg_color, -1)
     cv2.putText(frame, text, (x, y), font, scale, color, thickness)
 
 def process_video(input_path):
+    global blur_override, message_text, message_timer
+
     frame_idx = 0
     pause_blur_counter = 0
     prediction_history = deque(maxlen=VOTE_WINDOW)
-
     cap = cv2.VideoCapture(input_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     NO_BLUR_DURATION = int(NO_BLUR_DURATION_SECONDS * fps)
@@ -133,6 +146,7 @@ def process_video(input_path):
         else:
             pause_blur_counter -= 1
 
+        # Status indicator
         if blur_override:
             status_text = "HALO DISABLED: DECRYPTION OVERRIDE"
         elif pause_blur_counter > 0:
@@ -140,27 +154,34 @@ def process_video(input_path):
         else:
             status_text = "HALO ACTIVE: PROTECTING PRIVACY"
 
-        color = (0, 0, 255) if pause_blur_counter > 0 or blur_override else (0, 255, 0)
-        draw_status_text(frame, status_text, color)
+        status_color = (0, 0, 255) if pause_blur_counter > 0 or blur_override else (0, 255, 0)
+        draw_text_box(frame, status_text, status_color)
 
+        # Temporary message display (e.g. access granted)
+        if message_timer > 0:
+            draw_text_box(frame, message_text, (0, 0, 0), x=10, y=50, bg_color=(255, 255, 255))
+            message_timer -= 1
+
+        # Show frame
         cv2.imshow("Halo CCTV Feed", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):
             break
+        elif key == ord('p') and not blur_override:
+            password = get_decryption_password()
+            if password == BLUR_OVERRIDE_KEY:
+                blur_override = True
+                message_text = "Access granted"
+                print("[AUTH OVERRIDE] Halo disabled by ID:ALPHA1.")
+            else:
+                message_text = "Invalid key"
+                print("[ACCESS DENIED] Incorrect Key - Attempt logged")
+            message_timer = int(fps * 2)  # show for 2 seconds
 
     cap.release()
     cv2.destroyAllWindows()
     print("Video playback finished.")
 
 if __name__ == '__main__':
-    root = tk.Tk()
-    root.withdraw()
-    password = simpledialog.askstring("Access Override", "Enter decryption key:", show='*')
-
-    if password == BLUR_OVERRIDE_KEY:
-        print("[AUTH OVERRIDE] Blurring disabled for authorized access.")
-        blur_override = True
-    else:
-        print("[SECURE MODE] Halo privacy protection enabled.")
-
     input_video = "/Users/isaacigbokwe/Documents/halo/halo/app/input_videos/input2.mp4"
     process_video(input_video)
